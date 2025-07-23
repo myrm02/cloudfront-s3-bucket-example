@@ -72,12 +72,6 @@ variable "aws_cloudfront_origin_access_control_description" {
   default     = "TP2 Front S3 Origin Access Control"
 }
 
-variable "aws_cloudfront_origin_access_control_description" {
-  type        = string
-  description = "TP2 Front S3 Origin Access Control Name"
-  default     = "TP2 Front S3 Origin Access Control"
-}
-
 variable "signing_protocol" {
   type        = string
   description = "TP2 Front S3 Origin Access Control Signing Protocol"
