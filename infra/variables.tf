@@ -54,6 +54,13 @@ variable "bucket_owner_acl" {
   default     = "BucketOwnerPreferred"
 }
 
+variable "price_class" {
+  type        = string
+  description = "The price class for the CloudFront distribution"
+  default     = "PriceClass_200"
+  
+}
+
 variable "s3_origin_id" {
   type        = string
   description = "TP2 Front S3 Origin ID"
@@ -72,10 +79,16 @@ variable "aws_cloudfront_origin_access_control_description" {
   default     = "TP2 Front S3 Origin Access Control"
 }
 
-variable "signing_protocol" {
-  type        = string
-  description = "TP2 Front S3 Origin Access Control Signing Protocol"
-  default     = "sigv4"
+variable "allowed_methods" {
+  type        = list(string)
+  description = "TP2 Front S3 Origin Access Control Signing Behavior"
+  default     = ["GET", "HEAD", "OPTIONS"]
+}
+
+variable "cached_methods" {
+  type        = list(string)
+  description = "TP2 Front S3 Origin Access Control Signing Behavior"
+  default     = ["GET", "HEAD"]
 }
 
 variable "restriction_type" {

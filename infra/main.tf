@@ -47,6 +47,8 @@ data "aws_iam_policy_document" "allow_content_public" {
       "s3:GetObject",
       "s3:PutBucketPolicy",
       "s3:GetBucketPolicyStatus",
+      "s3:ListAllMyBuckets",
+      "s3:GetBucketLocation",
     ]
     resources = [
       "${aws_s3_bucket.main.arn}/*",
@@ -73,52 +75,72 @@ resource "random_integer" "random" {
   max = 50000
 }
 
-resource "aws_s3_bucket_acl" "main_acl" {
-  bucket = aws_s3_bucket.main.id
-  acl    = "private"
+resource "aws_cloudfront_origin_access_identity" "main" {
+  comment = "OAI for S3 bucket access"
 }
 
 locals {
   s3_origin_id = var.s3_origin_id != "" ? var.s3_origin_id : "tp2-front-s3-origin"
 }
 
-resource "aws_cloudfront_origin_access_control" "default" {
-  name                              = var.aws_cloudfront_origin_access_control_name
-  description                       = var.aws_cloudfront_origin_access_control_description
-  origin_access_control_origin_type = "s3"
-  signing_behavior                  = "always"
-  signing_protocol                  = var.signing_protocol
+data "aws_iam_policy_document" "allow_cloudfront_access" {
+  statement {
+    actions = ["s3:GetObject"]
+
+    principals {
+      type        = "AWS"
+      identifiers = [aws_cloudfront_origin_access_identity.main.iam_arn]
+    }
+
+    resources = ["${aws_s3_bucket.main.arn}/*"]
+  }
 }
 
-resource "aws_cloudfront_distribution" "s3_distribution" {
+resource "aws_s3_bucket_policy" "allow_cloudfront" {
+  bucket = aws_s3_bucket.main.id
+  policy = data.aws_iam_policy_document.allow_cloudfront_access.json
+}
+
+resource "aws_cloudfront_distribution" "main" {
+  enabled = true
+
   origin {
-    domain_name              = aws_s3_bucket.main.bucket_regional_domain_name
-    origin_access_control_id = aws_cloudfront_origin_access_control.default.id
-    origin_id                = local.s3_origin_id
+    domain_name = aws_s3_bucket.main.bucket_regional_domain_name
+    origin_id   = local.s3_origin_id
+
+    s3_origin_config {
+      origin_access_identity = aws_cloudfront_origin_access_identity.main.cloudfront_access_identity_path
+    }
   }
 
-  enabled             = true
-  is_ipv6_enabled     = true
-  comment             = "IPv6 enabled CloudFront distribution for S3 bucket"
-  default_root_object = var.index_file
-
   default_cache_behavior {
-    allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods   = ["GET", "HEAD"]
+    allowed_methods  = var.allowed_methods
+    cached_methods   = var.cached_methods
+
     target_origin_id = local.s3_origin_id
+
+    viewer_protocol_policy = var.viewer_protocol_policy
 
     forwarded_values {
       query_string = false
-
       cookies {
-        forward = var.cookies_forward != "" ? var.cookies_forward : "none"
+        forward = var.cookies_forward
       }
     }
+  }
 
-    viewer_protocol_policy = var.viewer_protocol_policy != "" ? var.viewer_protocol_policy : "redirect-to-https"
-    min_ttl                = 0
-    default_ttl            = 3600
-    max_ttl                = 86400
+  price_class = var.price_class
+
+  viewer_certificate {
+    cloudfront_default_certificate = true
+  }
+
+  default_root_object = var.index_file
+
+  custom_error_response {
+    error_code         = 404
+    response_code      = 200
+    response_page_path = "/${var.index_file}"
   }
 
   restrictions {
@@ -128,11 +150,4 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
     }
   }
 
-  tags = {
-    Environment = "production"
-  }
-
-  viewer_certificate {
-    cloudfront_default_certificate = true
-  }
 }
