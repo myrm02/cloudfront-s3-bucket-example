@@ -1,11 +1,11 @@
-#Pré-requis
+# Pré-requis
 
 - Avoir Terraform installé
 - Avoir AWS CLI installé
 - Avoir AWS ToolKit installé sur VS Code ou autres IDE
 - Avoir un compte AWS
 
-#Pour déployer le projet via Terraform
+# Pour déployer le projet via Terraform
 
 - Rendez-vous sur le dossier /infra avec la commande "cd infra"
 - Actionner les commandes suivantes : terraform init -> terraform plan -> terraform apply
